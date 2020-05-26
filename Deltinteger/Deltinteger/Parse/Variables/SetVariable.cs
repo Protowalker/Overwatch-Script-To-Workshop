@@ -12,6 +12,9 @@ namespace Deltin.Deltinteger.Parse
         private string Operation { get; }
         private IExpression Value { get; }
 
+        private ParseInfo pInfo;
+        private DocRange range;
+
         public SetVariableAction(ParseInfo parseInfo, Scope scope, DeltinScriptParser.VarsetContext varsetContext)
         {
             IExpression variableExpression = parseInfo.GetExpression(scope, varsetContext.var);
@@ -27,10 +30,17 @@ namespace Deltin.Deltinteger.Parse
                 // If there is no value, syntax error.
                 if (varsetContext.val == null)
                     parseInfo.Script.Diagnostics.Error("Expected an expression.", DocRange.GetRange(varsetContext).end.ToRange());
-                
+
                 // Parse the value.
                 else
+                {
                     Value = parseInfo.GetExpression(scope, varsetContext.val);
+
+                    if (Value.Type() != null && Value.Type().IsConstant())
+                    {
+                        parseInfo.Script.Diagnostics.Error("Cannot set variable to constant type " + Value.Type().Name, DocRange.GetRange(varsetContext));
+                    }
+                }
             }
             else if (varsetContext.INCREMENT() != null) Operation = "++";
             else if (varsetContext.DECREMENT() != null) Operation = "--";
