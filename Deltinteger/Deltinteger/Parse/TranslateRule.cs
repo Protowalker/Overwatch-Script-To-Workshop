@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Deltin.Deltinteger.Elements;
 using Deltin.Deltinteger.LanguageServer;
+using Deltin.Parse;
 
 namespace Deltin.Deltinteger.Parse
 {
@@ -24,6 +25,33 @@ namespace Deltin.Deltinteger.Parse
         private double Priority { get; }
         private Subroutine Subroutine { get; }
 
+        public TranslateRule(DeltinScript deltinScript, RuleInstance ruleInstance)
+        {
+            RuleAction ruleAction = ruleInstance.rule;
+            
+            DeltinScript = deltinScript;
+            IsGlobal = ruleAction.EventType == RuleEvent.OngoingGlobal;
+            Name = ruleAction.Name;
+            EventType = ruleAction.EventType;
+            Team = ruleAction.Team;
+            Player = ruleAction.Player;
+            Disabled = ruleAction.Disabled;
+            Priority = ruleAction.Priority;
+
+            ActionSet = new ActionSet(this, null, Actions);
+
+            GetConditions(ruleAction);
+
+            RuleReturnHandler returnHandler = new RuleReturnHandler(ActionSet);
+            ActionSet actionSet = ActionSet.New(returnHandler);
+            for(int i = 0; i < ruleInstance.ParameterValues.Count; i++)
+            {
+                actionSet.IndexAssigner.Add(ruleAction.ParameterVars[i], ruleInstance.ParameterValues[i].Parse(actionSet));
+                IGettable indexResult = actionSet.IndexAssigner[ruleAction.ParameterVars[i]];
+            }
+            ruleAction.Block.Translate(ActionSet.New(returnHandler));
+        }
+
         public TranslateRule(DeltinScript deltinScript, RuleAction ruleAction)
         {
             DeltinScript = deltinScript;
@@ -40,6 +68,7 @@ namespace Deltin.Deltinteger.Parse
             GetConditions(ruleAction);
 
             RuleReturnHandler returnHandler = new RuleReturnHandler(ActionSet);
+            ActionSet actionSet = ActionSet.New(returnHandler);
             ruleAction.Block.Translate(ActionSet.New(returnHandler));
         }
         public TranslateRule(DeltinScript deltinScript, string name, RuleEvent eventType, Team team, PlayerSelector player, bool disabled = false)

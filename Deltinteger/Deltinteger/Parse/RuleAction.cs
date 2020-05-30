@@ -24,15 +24,35 @@ namespace Deltin.Deltinteger.Parse
         public double Priority;
         private DocRange missingBlockRange;
 
+        public bool IsRuleMacro { get; }
+
+        public CodeParameter[] Parameters { get; }
+        public Var[] ParameterVars { get; }
+
+
         public RuleAction(ParseInfo parseInfo, Scope scope, DeltinScriptParser.Ow_ruleContext ruleContext)
         {
-            Name = Extras.RemoveQuotes(ruleContext.STRINGLITERAL().GetText());
+            if(ruleContext.STRINGLITERAL() != null) Name = Extras.RemoveQuotes(ruleContext.STRINGLITERAL().GetText());
+            else if(ruleContext.name != null) Name = ruleContext.name.Text;
+
+            IsRuleMacro = ruleContext.name != null;
             Disabled = ruleContext.DISABLED() != null;
             DocRange ruleInfoRange = DocRange.GetRange(ruleContext.RULE_WORD());
             missingBlockRange = ruleInfoRange;
 
             GetRuleSettings(parseInfo, scope, ruleContext);
 
+            if(ruleContext.name != null)
+            {
+                if (ruleContext.setParameters() == null) parseInfo.Script.Diagnostics.Error("Rule macros must have parameters", ruleInfoRange);
+                else
+                {
+                    var result = CodeParameter.GetParameters(parseInfo, scope, ruleContext.setParameters(), false);
+                    Parameters = result.Parameters;
+                    ParameterVars = result.Variables;
+                }
+            }
+            
             // Get the conditions.
             if (ruleContext.rule_if() == null) Conditions = new RuleIfAction[0];
             else
@@ -60,6 +80,11 @@ namespace Deltin.Deltinteger.Parse
             // Get the rule order priority.
             if (ruleContext.number() != null)
                 Priority = double.Parse(ruleContext.number().GetText());
+
+            if(ruleContext.number() != null && ruleContext.STRINGLITERAL() == null)
+            {
+                parseInfo.Script.Diagnostics.Error("Rule macros cannot have a priority.", DocRange.GetRange(ruleContext.STRINGLITERAL()));
+            }
             
             ElementCountLens = new ElementCountCodeLens(ruleInfoRange, parseInfo.TranslateInfo.OptimizeOutput);
             parseInfo.Script.AddCodeLensRange(ElementCountLens);
