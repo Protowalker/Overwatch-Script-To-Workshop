@@ -23,7 +23,7 @@ namespace Deltin.Parse
         public RuleInstance(ParseInfo scriptInfo, Scope scope, Deltinteger.DeltinScriptParser.Rule_instanceContext instanceContext)
         {
             BaseRuleName = instanceContext.PART().GetText();
-            if (instanceContext.STRINGLITERAL() != null) Name = instanceContext.STRINGLITERAL().GetText();
+            if (instanceContext.STRINGLITERAL() != null) Name = Extras.RemoveQuotes(instanceContext.STRINGLITERAL().GetText());
             else scriptInfo.Script.Diagnostics.Error("Rule must have a name", DocRange.GetRange(instanceContext.RULE_WORD()));
             this.scriptInfo = scriptInfo;
 
