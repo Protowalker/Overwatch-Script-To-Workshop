@@ -119,11 +119,14 @@ case    : CASE expr? TERNARY_ELSE?;
 rule_if : IF LEFT_PAREN expr? RIGHT_PAREN;
 
 ow_rule : 
-	DISABLED? RULE_WORD ':' STRINGLITERAL number?
+	DISABLED? RULE_WORD ((':' STRINGLITERAL) | (name=PART LEFT_PAREN setParameters RIGHT_PAREN)) number?
 	expr*
 	rule_if*
 	block?
 	;
+
+rule_instance : DEFINE RULE_WORD ':' STRINGLITERAL name=PART LEFT_PAREN call_parameters RIGHT_PAREN number? STATEMENT_END;
+
 
 define_method : DOCUMENTATION* method_attributes* (VOID | DEFINE | code_type) name=PART LEFT_PAREN setParameters RIGHT_PAREN ((GLOBAL | PLAYER)? subroutineRuleName=STRINGLITERAL)?
 	block?
@@ -138,7 +141,7 @@ ruleset :
 	reserved_global?
 	reserved_player?
 	import_file*
-	((define STATEMENT_END) | ow_rule | define_method | define_macro | type_define | enum_define)*
+	((define STATEMENT_END) | rule_instance | ow_rule | define_method | define_macro | type_define | enum_define)*
 	EOF;
 
 // Classes/structs
@@ -175,7 +178,7 @@ UNTERMINATEDSTRINGLITERAL : '"' (~["\\\r\n] | '\\' (. | EOF))* ;
 
 DOCUMENTATION: '#' .*? NEWLINE ;
 // Comments
-COMMENT : (('/*' .*? '*/') | ('//' .*? NEWLINE)) -> skip ;
+COMMENT : (('/*' .*? '*/') | ('//' .*? (NEWLINE|EOF))) -> skip ;
 
 // Misc
 WHITESPACE : (' '|'\t')+ -> skip ;
@@ -242,6 +245,7 @@ DEFAULT   : 'default'   ;
 BASE      : 'base'      ;
 IS        : 'is'		;
 INTERFACE : 'interface' ;
+RULE_INSTANCE: 'ruleinstance' ;
 
 INS             : '=>'  ;
 EQUALS          : '='  ;
