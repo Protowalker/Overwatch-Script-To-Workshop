@@ -13,6 +13,7 @@ namespace Deltin.Parse
         public string BaseRuleName { get; }
         public string Name { get; }
 
+        public List<Var> ParameterVars { get; } = new List<Var>();
         public List<IExpression> ParameterValues { get; } = new List<IExpression>();
 
         public RuleAction rule;

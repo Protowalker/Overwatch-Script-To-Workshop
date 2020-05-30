@@ -44,12 +44,12 @@ namespace Deltin.Deltinteger.Parse
 
             RuleReturnHandler returnHandler = new RuleReturnHandler(ActionSet);
             ActionSet actionSet = ActionSet.New(returnHandler);
+            var indexer = actionSet.IndexAssigner.CreateContained();
             for(int i = 0; i < ruleInstance.ParameterValues.Count; i++)
             {
-                actionSet.IndexAssigner.Add(ruleAction.ParameterVars[i], ruleInstance.ParameterValues[i].Parse(actionSet));
-                IGettable indexResult = actionSet.IndexAssigner[ruleAction.ParameterVars[i]];
+                indexer.Add(ruleAction.ParameterVars[i], ruleInstance.ParameterValues[i].Parse(actionSet));
             }
-            ruleAction.Block.Translate(ActionSet.New(returnHandler));
+            ruleAction.Block.Translate(actionSet.New(indexer));
         }
 
         public TranslateRule(DeltinScript deltinScript, RuleAction ruleAction)
