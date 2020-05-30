@@ -31,7 +31,7 @@ namespace Deltin.Deltinteger.Parse
             
             DeltinScript = deltinScript;
             IsGlobal = ruleAction.EventType == RuleEvent.OngoingGlobal;
-            Name = ruleAction.Name;
+            Name = ruleInstance.Name;
             EventType = ruleAction.EventType;
             Team = ruleAction.Team;
             Player = ruleAction.Player;
