@@ -7,6 +7,7 @@ using Deltin.Deltinteger.Lobby;
 using Deltin.Deltinteger.I18n;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using Deltin.Parse;
 
 namespace Deltin.Deltinteger.Parse
 {
@@ -42,8 +43,8 @@ namespace Deltin.Deltinteger.Parse
 
             Types.AllTypes.AddRange(CodeType.DefaultTypes);
             Importer = new Importer(this, FileGetter, translateSettings.Root.Uri);
-            Importer.CollectScriptFiles(translateSettings.Root);            
-            
+            Importer.CollectScriptFiles(translateSettings.Root);
+
             Translate();
 
             if (!Diagnostics.ContainsErrors())
@@ -56,12 +57,12 @@ namespace Deltin.Deltinteger.Parse
                     disposable.Dispose();
         }
 
-        public T GetComponent<T>() where T: IComponent, new()
+        public T GetComponent<T>() where T : IComponent, new()
         {
             foreach (IComponent component in Components)
                 if (component is T t)
                     return t;
-            
+
             T newT = new T();
             newT.DeltinScript = this;
             Components.Add(newT);
@@ -70,6 +71,9 @@ namespace Deltin.Deltinteger.Parse
         }
 
         private List<RuleAction> rules { get; } = new List<RuleAction>();
+        private List<RuleAction> ruleMacros { get; } = new List<RuleAction>();
+
+        private List<RuleInstance> ruleInstances { get; } = new List<RuleInstance>();
 
         void Translate()
         {
@@ -92,24 +96,24 @@ namespace Deltin.Deltinteger.Parse
 
             // Get the enums
             foreach (ScriptFile script in Importer.ScriptFiles)
-            foreach (var enumContext in script.Context.enum_define())
-            {
-                var newEnum = new DefinedEnum(new ParseInfo(script, this), enumContext);
-                Types.AllTypes.Add(newEnum); 
-                Types.DefinedTypes.Add(newEnum);
-                Types.CalledTypes.Add(newEnum);
-            }
+                foreach (var enumContext in script.Context.enum_define())
+                {
+                    var newEnum = new DefinedEnum(new ParseInfo(script, this), enumContext);
+                    Types.AllTypes.Add(newEnum);
+                    Types.DefinedTypes.Add(newEnum);
+                    Types.CalledTypes.Add(newEnum);
+                }
 
             // Get the types
             foreach (ScriptFile script in Importer.ScriptFiles)
-            foreach (var typeContext in script.Context.type_define())
-            {
-                var newType = new DefinedType(new ParseInfo(script, this), GlobalScope, typeContext);
-                Types.AllTypes.Add(newType);
-                Types.DefinedTypes.Add(newType);
-                Types.CalledTypes.Add(newType);
-            }
-            
+                foreach (var typeContext in script.Context.type_define())
+                {
+                    var newType = new DefinedType(new ParseInfo(script, this), GlobalScope, typeContext);
+                    Types.AllTypes.Add(newType);
+                    Types.DefinedTypes.Add(newType);
+                    Types.CalledTypes.Add(newType);
+                }
+
             // Get the methods and macros
             foreach (ScriptFile script in Importer.ScriptFiles)
             {
@@ -118,7 +122,7 @@ namespace Deltin.Deltinteger.Parse
                 // Get the methods.
                 foreach (var methodContext in script.Context.define_method())
                     new DefinedMethod(parseInfo, RulesetScope, RulesetScope, methodContext, null, true);
-                
+
                 // Get the macros.
                 foreach (var macroContext in script.Context.define_macro())
                     parseInfo.GetMacro(RulesetScope, RulesetScope, macroContext);
@@ -126,15 +130,15 @@ namespace Deltin.Deltinteger.Parse
 
             // Get the defined variables.
             foreach (ScriptFile script in Importer.ScriptFiles)
-            foreach (var varContext in script.Context.define())
-            {
-                Var newVar = new RuleLevelVariable(RulesetScope, new DefineContextHandler(new ParseInfo(script, this), varContext));
-                rulesetVariables.Add(newVar);
+                foreach (var varContext in script.Context.define())
+                {
+                    Var newVar = new RuleLevelVariable(RulesetScope, new DefineContextHandler(new ParseInfo(script, this), varContext));
+                    rulesetVariables.Add(newVar);
 
-                // Add the variable to the player variables scope if it is a player variable.
-                if (newVar.VariableType == VariableType.Player)
-                    PlayerVariableScope.CopyVariable(newVar);
-            }
+                    // Add the variable to the player variables scope if it is a player variable.
+                    if (newVar.VariableType == VariableType.Player)
+                        PlayerVariableScope.CopyVariable(newVar);
+                }
 
             foreach (var applyType in Types.AllTypes) if (applyType is ClassType classType) classType.ResolveElements();
             foreach (var apply in applyBlocks) apply.SetupParameters();
@@ -143,9 +147,20 @@ namespace Deltin.Deltinteger.Parse
 
             // Get the rules
             foreach (ScriptFile script in Importer.ScriptFiles)
-            foreach (var ruleContext in script.Context.ow_rule())
-                rules.Add(new RuleAction(new ParseInfo(script, this), RulesetScope, ruleContext));
+                foreach (var ruleContext in script.Context.ow_rule())
+                {
+                    var rule = new RuleAction(new ParseInfo(script, this), RulesetScope, ruleContext);
+                    if (rule.IsRuleMacro) ruleMacros.Add(rule);
+                    else rules.Add(rule);
+                }
 
+            foreach (ScriptFile script in Importer.ScriptFiles)
+                foreach (var ruleInstanceContext in script.Context.rule_instance())
+                {
+                    RuleInstance instance = new RuleInstance(new ParseInfo(script, this), RulesetScope, ruleInstanceContext);
+                    instance.FindRule(ruleMacros);
+                    ruleInstances.Add(instance);
+                }
         }
 
         public string WorkshopCode { get; private set; }
@@ -165,7 +180,7 @@ namespace Deltin.Deltinteger.Parse
             // Init called types.
             foreach (var type in Types.CalledTypes.Distinct()) type.WorkshopInit(this);
 
-             // Assign variables at the rule-set level.
+            // Assign variables at the rule-set level.
             foreach (var variable in rulesetVariables)
             {
                 // Assign the variable an index.
@@ -196,15 +211,24 @@ namespace Deltin.Deltinteger.Parse
                 rule.ElementCountLens.RuleParsed(newRule);
             }
 
+            foreach (var ruleInstance in ruleInstances)
+            {
+                var translate = new TranslateRule(this, ruleInstance);
+
+                Rule newRule = translate.GetRule();
+                WorkshopRules.Add(newRule);
+                ruleInstance.rule.ElementCountLens.RuleParsed(newRule);
+            }
+
             if (InitialPlayer.Actions.Count > 0)
                 WorkshopRules.Insert(0, InitialPlayer.GetRule());
 
             if (InitialGlobal.Actions.Count > 0)
                 WorkshopRules.Insert(0, InitialGlobal.GetRule());
-            
+
             if (addRules != null)
                 WorkshopRules.AddRange(addRules.Invoke(VarCollection).Where(rule => rule != null));
-            
+
             // Order the workshop rules by priority.
             WorkshopRules = WorkshopRules.OrderBy(wr => wr.Priority).ToList();
 
@@ -249,13 +273,13 @@ namespace Deltin.Deltinteger.Parse
             //Regex ruleBodyRegex = new Regex(@"\{(?:[^{}]+|(?R))*+\}", RegexOptions.Compiled);
             Regex ruleNameRegex = new Regex(@"(?<=rule\("")[^\r?\n]*(?=""\))", RegexOptions.Compiled);
 
-            for(int i = 0; i < Importer.OWFiles.Count; i++)
+            for (int i = 0; i < Importer.OWFiles.Count; i++)
             {
                 string[] rules = ruleRegex.Matches(Importer.OWFiles[i].Content).Select(r => r.Value).ToArray();
 
-                foreach(var rule in rules)
+                foreach (var rule in rules)
                 {
-                    if(!WorkshopRules.Select(r => r.Name).Contains(ruleNameRegex.Match(rule).Value))
+                    if (!WorkshopRules.Select(r => r.Name).Contains(ruleNameRegex.Match(rule).Value))
                     {
                         result.Append(rule);
                     }
@@ -297,7 +321,7 @@ namespace Deltin.Deltinteger.Parse
             string playerCollectionString = Regex.Match(content, @"(?<=player:\r?\n)[\s\S]*?(?=})").Value;
             string subroutineCollectionString = Regex.Match(content, @"(?<=subroutines\r\n\{\r\n\t)[\s\S]*?(?=\})").Value;
 
-          
+
 
             Regex varRegex = new Regex(@"\d*?: [\S]*[\S]");
 
@@ -348,14 +372,14 @@ namespace Deltin.Deltinteger.Parse
 
             if (range != null && type == null)
                 diagnostics.Error(string.Format("The type {0} does not exist.", name), range);
-            
+
             return type;
         }
         public bool IsCodeType(string name)
         {
             return GetCodeType(name, null, null) != null;
         }
-        public T GetCodeType<T>() where T: CodeType => (T)AllTypes.FirstOrDefault(type => type.GetType() == typeof(T));
+        public T GetCodeType<T>() where T : CodeType => (T)AllTypes.FirstOrDefault(type => type.GetType() == typeof(T));
 
         public void CallType(CodeType type)
         {
@@ -370,7 +394,7 @@ namespace Deltin.Deltinteger.Parse
             foreach (CodeType type in AllTypes)
                 if (type is ClassType classType && classType.Identifier > 0)
                     builder.AppendLine("// " + classType.Name + ": " + classType.Identifier);
-            
+
             builder.AppendLine();
         }
     }
