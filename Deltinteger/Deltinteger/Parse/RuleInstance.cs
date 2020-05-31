@@ -13,8 +13,7 @@ namespace Deltin.Parse
         public string BaseRuleName { get; }
         public string Name { get; }
 
-        public List<Var> ParameterVars { get; } = new List<Var>();
-        public List<IExpression> ParameterValues { get; } = new List<IExpression>();
+        public List<IExpression> ParameterValues { get; private set; } = new List<IExpression>();
 
         public RuleAction rule;
 
@@ -46,6 +45,9 @@ namespace Deltin.Parse
         {
             rule = rules.Where(r => r.IsRuleMacro && r.Name == BaseRuleName).FirstOrDefault();
             if (rule == null) scriptInfo.Script.Diagnostics.Error($"Base rule {BaseRuleName} does not exist.", range);
+            if (ParameterValues.Count < rule.Parameters.Length) scriptInfo.Script.Diagnostics.Error($"Not enough arguments", range);
+            else if (ParameterValues.Count > rule.Parameters.Length) scriptInfo.Script.Diagnostics.Error($"Too many arguments", range);
+
         }
 
         private IWorkshopTree[] GetParameterValuesAsWorkshop(ActionSet actionSet)
