@@ -40,16 +40,18 @@ namespace Deltin.Deltinteger.Parse
 
             ActionSet = new ActionSet(this, null, Actions);
 
-            GetConditions(ruleAction);
 
             RuleReturnHandler returnHandler = new RuleReturnHandler(ActionSet);
-            ActionSet actionSet = ActionSet.New(returnHandler);
-            var indexer = actionSet.IndexAssigner.CreateContained();
+            ActionSet = ActionSet.New(returnHandler);
+            var indexer = ActionSet.IndexAssigner.CreateContained();
             for(int i = 0; i < ruleInstance.ParameterValues.Count; i++)
             {
-                indexer.Add(ruleAction.ParameterVars[i], ruleInstance.ParameterValues[i].Parse(actionSet));
+                indexer.Add(ruleAction.ParameterVars[i], ruleInstance.ParameterValues[i].Parse(ActionSet));
             }
-            ruleAction.Block.Translate(actionSet.New(indexer));
+            ActionSet = ActionSet.New(indexer);
+            GetConditions(ruleAction);
+
+            ruleAction.Block.Translate(ActionSet);
         }
 
         public TranslateRule(DeltinScript deltinScript, RuleAction ruleAction)
