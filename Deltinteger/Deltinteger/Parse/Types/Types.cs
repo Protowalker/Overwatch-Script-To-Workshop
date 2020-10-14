@@ -81,7 +81,6 @@ namespace Deltin.Deltinteger.Parse
         }
 
         public virtual bool Is(CodeType type) => this == type;
-
         // Static
         public abstract Scope ReturningScope();
         // Object
