@@ -1498,6 +1498,9 @@ namespace Deltin.Deltinteger.Compiler.Parse
                 case TokenType.Import:
                     context.Imports.Add(ParseImport());
                     break;
+				case TokenType.Type:
+					context.TypeAliases.Add(ParseTypeAlias());
+					break;
                 
 				case TokenType.Operator:
 					//TODO: Operators
@@ -1552,6 +1555,21 @@ namespace Deltin.Deltinteger.Compiler.Parse
 
             return EndTokenCapture(new RuleContext(ruleToken, name, disabled, order, settings, conditions, statement));
         }
+
+		/// <summary>Parses a type alias. </summary>
+		TypeAliasContext ParseTypeAlias() {
+			StartTokenCapture();
+			if (GetIncrementalNode(out TypeAliasContext type)) return EndTokenCapture(type);
+
+			ParseExpected(TokenType.Type);
+			Token nameToken = ParseExpected(TokenType.Identifier);
+			ParseExpected(TokenType.Equal);
+			Token parseTypeToken = ParseExpected(TokenType.Identifier);
+			ParseExpected(TokenType.Semicolon);
+
+			return EndTokenCapture(new TypeAliasContext(nameToken, parseTypeToken));
+
+		}
 
         /// <summary>Parses a class.</summary>
         ClassContext ParseClass()
