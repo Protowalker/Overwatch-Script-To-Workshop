@@ -234,6 +234,7 @@ namespace Deltin.Deltinteger.Compiler.Parse
                     MatchKeyword("foreach", TokenType.Foreach) ||
                     MatchKeyword("in", TokenType.In) ||
                     MatchKeyword("rule", TokenType.Rule) ||
+					MatchKeyword("operator", TokenType.Operator) ||
                     MatchKeyword("disabled", TokenType.Disabled) ||
                     MatchKeyword("true", TokenType.True) ||
                     MatchKeyword("false", TokenType.False) ||
@@ -265,7 +266,6 @@ namespace Deltin.Deltinteger.Compiler.Parse
                     MatchKeyword("this", TokenType.This) ||
                     MatchKeyword("root", TokenType.Root) ||
                     MatchKeyword("as", TokenType.As) ||
-					MatchKeyword("type", TokenType.Type) ||
                     MatchIdentifier() ||
                     MatchString();
                 
