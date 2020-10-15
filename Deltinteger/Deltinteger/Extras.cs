@@ -82,11 +82,7 @@ namespace Deltin.Deltinteger
 
         public static Uri Clean(this Uri uri)
         {
-			Uri path;
-			if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-            	return new Uri("/" +uri.FilePath());
-			else 
-				return new Uri(uri.FilePath());
+			return new Uri(uri.FilePath());
         }
 
         public static bool Compare(this Uri uri, Uri other) => uri.Clean().FilePath() == other.Clean().FilePath();
