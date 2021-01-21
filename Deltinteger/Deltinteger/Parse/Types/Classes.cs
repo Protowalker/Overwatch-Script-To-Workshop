@@ -267,9 +267,8 @@ Object-serve scope. Only object members.
         public void Init()
         {
             ClassIndexes = DeltinScript.VarCollection.Assign(ClassIndexesTag, true, false);
+            //Pre-allocate the classarray. The first entry is reserved for the counter
             DeltinScript.InitialGlobal.ActionSet.AddAction(ClassIndexes.SetVariable(0, null, Constants.MAX_ARRAY_LENGTH));
-            //set the first element to -1. This makes it so that no instance == 0
-            DeltinScript.InitialGlobal.ActionSet.AddAction(ClassIndexes.SetVariable(-1, null, 0));
         }
 
         public IndexReference CreateObject(int classIdentifier, ActionSet actionSet, string internalName)
@@ -279,19 +278,21 @@ Object-serve scope. Only object members.
             return classReference;
         }
 
+        private Element ClassCount => Element.Part<V_ValueInArray>(ClassIndexes.GetVariable(), new V_Number(0));
+        
         public void GetClassIndex(int classIdentifier, IndexReference classReference, ActionSet actionSet)
         {
-            actionSet.AddAction(classReference.SetVariable(
-                Element.Part<V_IndexOfArrayValue>(
-                    ClassIndexes.GetVariable(),
-                    new V_Number(0)
-                )
-            ));
+            //set the reference to the number of classes available. This is stored in the first index
+            //Add one because we don't store classes in the first index
+            actionSet.AddAction(classReference.SetVariable(ClassCount + 1));
+            //set that index in the class array to the identifier of this instance
             actionSet.AddAction(ClassIndexes.SetVariable(
                 classIdentifier,
                 null,
                 (Element)classReference.GetVariable()
             ));
+            //Increment the class counter
+            actionSet.AddAction(ClassIndexes.ModifyVariable(Operation.Add, 1, null, 0));
         }
 
         public IndexReference GetClassVariableStack(VarCollection collection, int index)
